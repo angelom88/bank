@@ -49,6 +49,16 @@ public class BankServiceImpl implements BankService {
 	}
 
 	@Override
+	public List<Account> findAllAccounts() {
+		return accountMapper.findAllAccounts();
+	}
+
+	@Override
+	public BigDecimal checkBalance(Long accountNumber) {
+		return accountMapper.findAccountByAccountNumber(accountNumber).getBalance();
+	}
+
+	@Override
 	public synchronized int transfer(Long fromAccountNumber, Long toAccountNumber, BigDecimal amount) {
 
 		Account firstLock, secondLock;
@@ -78,14 +88,4 @@ public class BankServiceImpl implements BankService {
 		return 1;
 	}
 
-
-	@Override
-	public List<Account> findAllAccounts() {
-		return accountMapper.findAllAccounts();
-	}
-
-	@Override
-	public BigDecimal checkBalance(Long accountNumber) {
-		return accountMapper.findAccountByAccountNumber(accountNumber).getBalance();
-	}
 }
