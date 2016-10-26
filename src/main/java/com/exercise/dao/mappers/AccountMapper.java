@@ -20,7 +20,7 @@ public interface AccountMapper {
 	@Update("UPDATE accounts SET balance = #{balance} WHERE account_number = #{accountNumber}")
 	int update(Account account);
 
-	@Select("SELECT account_number, balance FROM accounts WHERE account_number = #{accountNumber} for update")
+	@Select("SELECT account_number, balance FROM accounts WHERE account_number = #{accountNumber}")
 	Account findAccountByAccountNumber(Long accountNumber);
 
 	@Select("SELECT account_number, balance, created_time, updated_time FROM accounts")

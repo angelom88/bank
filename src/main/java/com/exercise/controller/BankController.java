@@ -22,6 +22,11 @@ public class BankController {
 	@Autowired
 	private BankServiceImpl bankService;
 
+	@RequestMapping("/test")
+	public BankResponse test() {
+		return BankResponse.success(bankService.findAllAccounts(), "fetch successfully");
+	}
+
 	@RequestMapping(value = "/checkBalance", consumes = "application/json")
 	public BankResponse checkBalance(@RequestParam("accountNumber") Long accountNumber) {
 		return BankResponse.success(bankService.checkBalance(accountNumber), "fetch successfully");
@@ -31,6 +36,7 @@ public class BankController {
 	@RequestMapping(value = "/transfer", method = RequestMethod.POST)
 	public BankResponse transfer(@RequestBody @Valid TransferRequest request) {
 		try {
+			System.out.println("transfer: from: " + request.getFromAccountNumber() + " to:" + request.getToAccountNumber() + " amount: " + request.getTransferAmount());
 			return BankResponse.success(bankService.transfer(request.getFromAccountNumber(), request.getToAccountNumber(), request.getTransferAmount()), "Transfer successfully");
 		} catch (BusinessException e) {
 			return BankResponse.failed(e.getMessage());

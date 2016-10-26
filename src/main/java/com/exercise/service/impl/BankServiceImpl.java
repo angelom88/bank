@@ -20,7 +20,8 @@ public class BankServiceImpl implements BankService {
 	@Autowired
 	AccountMapper accountMapper;
 
-	private boolean hasSufficientBalance(Account account, BigDecimal amountDeduct) {
+	private boolean hasSufficientBalance(Long accountNumber, BigDecimal amountDeduct) {
+		Account account = accountMapper.findAccountByAccountNumber(accountNumber);
 		if (account == null) {
 			throw new BusinessException("No account number found.");
 		} else {
@@ -35,7 +36,7 @@ public class BankServiceImpl implements BankService {
 	@Transactional
 	private int debit(Account account, BigDecimal amount) {
 		account.setBalance(account.getBalance().subtract(amount));
-		return accountMapper.update(account);
+		return accountMapper.insertOrUpdate(account);
 	}
 
 	@Transactional
@@ -59,36 +60,32 @@ public class BankServiceImpl implements BankService {
 
 	@Override
 	public synchronized int transfer(Long fromAccountNumber, Long toAccountNumber, BigDecimal amount) {
-		int success = 0;
-		try {
-			Account firstLock, secondLock;
 
-			Account fromAccount = accountMapper.findAccountByAccountNumber(fromAccountNumber);
-			Account toAccount = accountMapper.findAccountByAccountNumber(toAccountNumber);
-			if (fromAccount.getAccountNumber().compareTo(toAccount.getAccountNumber()) == 0) {
-				throw new BusinessException("Cannot transfer to the same account.");
-			} else if (fromAccount.getAccountNumber().compareTo(toAccount.getAccountNumber()) < 0) {
-				firstLock = fromAccount;
-				secondLock = toAccount;
-			} else {
-				firstLock = toAccount;
-				secondLock = fromAccount;
-			}
-
-			synchronized (firstLock) {
-				synchronized (secondLock) {
-					if (hasSufficientBalance(fromAccount, amount)) {
-						success = (debit(fromAccount, amount) > 0 && credit(toAccount, amount) > 0) ? 1 : 0;
-					} else {
-						throw new BusinessException("Insufficient balance");
-					}
-				}
-			}
-		} catch (Exception e) {
-			new BusinessException("Exception encountered");
+		Account firstLock, secondLock;
+		Account fromAccount = accountMapper.findAccountByAccountNumber(fromAccountNumber);
+		Account toAccount = accountMapper.findAccountByAccountNumber(toAccountNumber);
+		if (fromAccount.getAccountNumber().compareTo(toAccount.getAccountNumber()) == 0) {
+			throw new BusinessException("Cannot transfer to the same account.");
+		} else if (fromAccount.getAccountNumber().compareTo(toAccount.getAccountNumber()) < 0) {
+			firstLock = fromAccount;
+			secondLock = toAccount;
+		} else {
+			firstLock = toAccount;
+			secondLock = fromAccount;
 		}
 
-		return success;
+		synchronized (firstLock) {
+			synchronized (secondLock) {
+				if (hasSufficientBalance(fromAccountNumber, amount)) {
+					debit(fromAccount, amount);
+					credit(toAccount, amount);
+				} else {
+					throw new BusinessException("Insufficient balance");
+				}
+			}
+		}
+
+		return 1;
 	}
 
 }
