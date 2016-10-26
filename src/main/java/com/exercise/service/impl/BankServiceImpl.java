@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Created by User_2 on 10/24/2016.
@@ -48,7 +49,8 @@ public class BankServiceImpl implements BankService {
 	}
 
 	@Override
-	public int transfer(Long fromAccountNumber, Long toAccountNumber, BigDecimal amount) {
+	public synchronized int transfer(Long fromAccountNumber, Long toAccountNumber, BigDecimal amount) {
+
 		Account firstLock, secondLock;
 		Account fromAccount = accountMapper.findAccountByAccountNumber(fromAccountNumber);
 		Account toAccount = accountMapper.findAccountByAccountNumber(toAccountNumber);
@@ -77,4 +79,13 @@ public class BankServiceImpl implements BankService {
 	}
 
 
+	@Override
+	public List<Account> findAllAccounts() {
+		return accountMapper.findAllAccounts();
+	}
+
+	@Override
+	public BigDecimal checkBalance(Long accountNumber) {
+		return accountMapper.findAccountByAccountNumber(accountNumber).getBalance();
+	}
 }
