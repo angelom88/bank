@@ -1,5 +1,6 @@
 package com.exercise.service.impl;
 
+import com.exercise.BankApplication;
 import com.exercise.bo.BusinessException;
 import com.exercise.dao.mappers.AccountMapper;
 import com.exercise.domain.Account;
@@ -10,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by User_2 on 10/24/2016.
@@ -19,33 +23,36 @@ public class BankServiceImpl implements BankService {
 
 	@Autowired
 	AccountMapper accountMapper;
-
-	private boolean hasSufficientBalance(Long accountNumber, BigDecimal amountDeduct) {
-		Account account = accountMapper.findAccountByAccountNumber(accountNumber);
-		if (account == null) {
-			throw new BusinessException("No account number found.");
-		} else {
-			if (account.getBalance().compareTo(amountDeduct) >= 0) {
-				return true;
-			}
-		}
-
-		return false;
-	}
+	private Lock bankLock = new ReentrantLock();
+	private Condition hasSufficientFunds = bankLock.newCondition();
 
 	@Transactional
 	private int debit(Account account, BigDecimal amount) {
-		account.setBalance(account.getBalance().subtract(amount));
-		return accountMapper.insertOrUpdate(account);
+		bankLock.lock();
+		try {
+			account.setBalance(account.getBalance().subtract(amount));
+			return accountMapper.update(account);
+		} catch (RuntimeException e) {
+			return 0;
+		} finally {
+			bankLock.unlock();
+		}
 	}
 
 	@Transactional
 	private int credit(Account account, BigDecimal amount) {
-		if (account != null) {
-			account.setBalance(null == account.getBalance() ? amount : account.getBalance().add(amount));
+		bankLock.lock();
+		try {
+			if (account != null) {
+				account.setBalance(null == account.getBalance() ? amount : account.getBalance().add(amount));
+				return accountMapper.update(account);
+			}
+			return 0;
+		} catch (RuntimeException e) {
+			return 0;
+		} finally {
+			bankLock.unlock();
 		}
-
-		return accountMapper.insertOrUpdate(account);
 	}
 
 	@Override
@@ -59,33 +66,28 @@ public class BankServiceImpl implements BankService {
 	}
 
 	@Override
-	public synchronized int transfer(Long fromAccountNumber, Long toAccountNumber, BigDecimal amount) {
+	public int transfer(Long fromAccountNumber, Long toAccountNumber, BigDecimal amount) {
+		Account fromAccount, toAccount;
+		int success = 0;
+		BigDecimal transferredAmount = new BigDecimal(0);
 
-		Account firstLock, secondLock;
-		Account fromAccount = accountMapper.findAccountByAccountNumber(fromAccountNumber);
-		Account toAccount = accountMapper.findAccountByAccountNumber(toAccountNumber);
-		if (fromAccount.getAccountNumber().compareTo(toAccount.getAccountNumber()) == 0) {
-			throw new BusinessException("Cannot transfer to the same account.");
-		} else if (fromAccount.getAccountNumber().compareTo(toAccount.getAccountNumber()) < 0) {
-			firstLock = fromAccount;
-			secondLock = toAccount;
-		} else {
-			firstLock = toAccount;
-			secondLock = fromAccount;
-		}
-
-		synchronized (firstLock) {
-			synchronized (secondLock) {
-				if (hasSufficientBalance(fromAccountNumber, amount)) {
-					debit(fromAccount, amount);
-					credit(toAccount, amount);
-				} else {
-					throw new BusinessException("Insufficient balance");
-				}
+		bankLock.lock();
+		try {
+			fromAccount = accountMapper.findAccountByAccountNumber(fromAccountNumber);
+			toAccount = accountMapper.findAccountByAccountNumber(toAccountNumber);
+			while (fromAccount.getBalance().compareTo(amount) < 0) {
+				hasSufficientFunds.await();
 			}
+			success = (debit(fromAccount, amount) == 1 && credit(toAccount, amount) == 1) ? 1 : 0;
+			hasSufficientFunds.signal();
+		} catch (InterruptedException e) {
+			//e.printStackTrace(); do nothing instead
+		} finally {
+			bankLock.unlock();
 		}
 
-		return 1;
+		return success;
 	}
+
 
 }
