@@ -17,4 +17,4 @@ To execute integration test:
 - execute command: **mvn clean test verify**
 - JMeter test reports will be generated inside project folder:  
    
-   - report: **<project-dir>/target/jmeter/report/index.html**
+   - report: **<project-dir>/target/jmeter/report/index.html** (ie: **https://angelom88.github.io/bank-report/**)
