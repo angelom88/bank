@@ -1,10 +1,10 @@
 ### Bank sync exer
 bank transfer synchronization using spring boot and MyBatis
-- it runs under http://localhost:8083/bank/transfer
+- it runs under **http://localhost:8083/bank/transfer**
 
 Example:
 
-url: http://localhost:8083/bank/transfer
+url: **http://localhost:8083/bank/transfer**
 
 Method-type: POST
 
@@ -14,7 +14,7 @@ json: {"fromAccountNumber": "987654", "toAccountNumber": "123456", "transferAmou
 
 
 To execute integration test:
-- execute command: mvn test verify
+- execute command: **mvn clean test verify**
 - JMeter test reports will be generated inside project folder:  
    
-   - report: <project-dir>/target/jmeter/report/index.html
+   - report: **<project-dir>/target/jmeter/report/index.html**
